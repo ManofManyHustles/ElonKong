@@ -86,7 +86,7 @@
             50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
         }
-        #score, #timer {
+        #score, #timer, #high-score {
             font-size: 20px;
             margin: 5px;
             color: #333;
@@ -108,6 +108,7 @@
 <body>
     <div id="score">Score: 0B</div>
     <div id="timer">Time: 60</div>
+    <div id="high-score">High Score: 0B</div>
     <div id="game-container">
         <img id="king-kong-elon" src="king-kong-elon.png" alt="King Kong Elon">
         <div id="grid">
@@ -131,12 +132,16 @@
         const bureaucrats = document.querySelectorAll('.bureaucrat');
         const scoreDisplay = document.getElementById('score');
         const timerDisplay = document.getElementById('timer');
+        const highScoreDisplay = document.getElementById('high-score');
         const startButton = document.getElementById('start-button');
         const hitSound = document.getElementById('hit-sound');
         const kingKongElon = document.getElementById('king-kong-elon');
 
         let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        highScoreDisplay.textContent = `High Score: ${highScore}B`;
         let timeLeft = 60;
+        let level = 1;
         let gameActive = false;
         let gameInterval;
 
@@ -164,7 +169,7 @@
             setTimeout(() => {
                 bureaucrat.classList.remove('up');
                 if (gameActive) popUp();
-            }, Math.random() * 1000 + 500);
+            }, Math.random() * (level === 1 ? 1000 : 800) + 400); // Faster in level 2
         }
 
         function whack(e) {
@@ -179,7 +184,7 @@
                 const whackEffect = document.createElement('div');
                 whackEffect.classList.add('whack-effect');
                 this.appendChild(whackEffect);
-                if (hitSound) hitSound.play(); // Check if sound exists
+                if (hitSound) hitSound.play();
                 setTimeout(() => whackEffect.remove(), 300);
             }
         }
@@ -189,15 +194,16 @@
             gameActive = true;
             score = 0;
             timeLeft = 60;
+            level = 1;
             scoreDisplay.textContent = `Score: ${score}B`;
             timerDisplay.textContent = `Time: ${timeLeft}`;
             startButton.style.display = 'none';
-            if (hitSound) hitSound.load(); // Preload sound if present
+            if (hitSound) hitSound.load();
             popUp();
             gameInterval = setInterval(() => {
                 timeLeft--;
                 timerDisplay.textContent = `Time: ${timeLeft}`;
-                if (timeLeft === 30) {
+                if (timeLeft === 30 && level === 1) {
                     kingKongElon.style.width = '200px';
                     kingKongElon.style.height = '150px';
                     kingKongElon.classList.add('beating');
@@ -207,7 +213,12 @@
                         kingKongElon.style.height = '112px';
                     }, 3000);
                 }
-                if (timeLeft <= 0) {
+                if (timeLeft <= 0 && level === 1) {
+                    level = 2;
+                    timeLeft = 30; // Level 2: 30 seconds
+                    timerDisplay.textContent = `Time: ${timeLeft}`;
+                    alert('Level 2: Faster Bureaucrats!');
+                } else if (timeLeft <= 0 && level === 2) {
                     endGame();
                 }
             }, 1000);
@@ -220,7 +231,14 @@
             kingKongElon.classList.remove('beating');
             kingKongElon.style.width = '150px';
             kingKongElon.style.height = '112px';
-            alert(`Game Over! Your score: ${score} billion`);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreDisplay.textContent = `High Score: ${highScore}B`;
+            }
+            const tweetText = encodeURIComponent(`I scored ${score}B whacking bureaucrats with King Kong Elon! Beat me: https://tinyurl.com/elonkong #ElonKong`);
+            alert(`Game Over! Score: ${score}B\nHigh Score: ${highScore}B`);
+            window.open(`https://twitter.com/intent/tweet?text=${tweetText}`, '_blank');
         }
 
         holes.forEach(hole => {
