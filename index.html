@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Whack-a-Bureaucrat</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 70vh;
+            background-color: #8B4513;
+            border: 3px solid #4A2F1E;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #king-kong-elon {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 112px;
+            z-index: 10;
+            transition: width 0.5s ease, height 0.5s ease;
+        }
+        #king-kong-elon.beating {
+            animation: chestBeat 0.5s infinite alternate;
+        }
+        @keyframes chestBeat {
+            0% { transform: translateX(-50%) rotate(-5deg); }
+            100% { transform: translateX(-50%) rotate(5deg); }
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 130px 10px 10px 10px;
+        }
+        .hole {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            background: #654321;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        .bureaucrat {
+            position: absolute;
+            bottom: -100%;
+            width: 100%;
+            height: 100%;
+            background: url('bureaucrat.png') no-repeat center;
+            background-size: contain;
+            transition: bottom 0.3s ease;
+        }
+        .bureaucrat.up {
+            bottom: 0;
+        }
+        .whack-effect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background: url('hammer.png') no-repeat center;
+            background-size: contain;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            animation: whackAnim 0.3s ease;
+        }
+        @keyframes whackAnim {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        #score, #timer {
+            font-size: 20px;
+            margin: 5px;
+            color: #333;
+        }
+        #start-button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #FFD700;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #start-button:hover {
+            background-color: #FFA500;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0B</div>
+    <div id="timer">Time: 60</div>
+    <div id="game-container">
+        <img id="king-kong-elon" src="king-kong-elon.png" alt="King Kong Elon">
+        <div id="grid">
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+            <div class="hole"><div class="bureaucrat"></div></div>
+        </div>
+    </div>
+    <button id="start-button">Start Game</button>
+
+    <audio id="hit-sound" src="hit.m4a"></audio>
+
+    <script>
+        const holes = document.querySelectorAll('.hole');
+        const bureaucrats = document.querySelectorAll('.bureaucrat');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const startButton = document.getElementById('start-button');
+        const hitSound = document.getElementById('hit-sound');
+        const kingKongElon = document.getElementById('king-kong-elon');
+
+        let score = 0;
+        let timeLeft = 60;
+        let gameActive = false;
+        let gameInterval;
+
+        const bureaucratImages = [
+            'bureaucrat.png',
+            'bureaucrat2.png',
+            'bureaucrat3.png'
+        ];
+
+        function randomHole() {
+            const idx = Math.floor(Math.random() * holes.length);
+            return holes[idx];
+        }
+
+        function randomBureaucrat() {
+            return bureaucratImages[Math.floor(Math.random() * bureaucratImages.length)];
+        }
+
+        function popUp() {
+            if (!gameActive) return;
+            const hole = randomHole();
+            const bureaucrat = hole.querySelector('.bureaucrat');
+            bureaucrat.style.backgroundImage = `url('${randomBureaucrat()}')`;
+            bureaucrat.classList.add('up');
+            setTimeout(() => {
+                bureaucrat.classList.remove('up');
+                if (gameActive) popUp();
+            }, Math.random() * 1000 + 500);
+        }
+
+        function whack(e) {
+            e.preventDefault();
+            if (!gameActive) return;
+            const bureaucrat = this.querySelector('.bureaucrat');
+            if (bureaucrat.classList.contains('up')) {
+                score += 1;
+                scoreDisplay.textContent = `Score: ${score}B`;
+                bureaucrat.classList.remove('up');
+
+                const whackEffect = document.createElement('div');
+                whackEffect.classList.add('whack-effect');
+                this.appendChild(whackEffect);
+                if (hitSound) hitSound.play(); // Check if sound exists
+                setTimeout(() => whackEffect.remove(), 300);
+            }
+        }
+
+        function startGame() {
+            if (gameActive) return;
+            gameActive = true;
+            score = 0;
+            timeLeft = 60;
+            scoreDisplay.textContent = `Score: ${score}B`;
+            timerDisplay.textContent = `Time: ${timeLeft}`;
+            startButton.style.display = 'none';
+            if (hitSound) hitSound.load(); // Preload sound if present
+            popUp();
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `Time: ${timeLeft}`;
+                if (timeLeft === 30) {
+                    kingKongElon.style.width = '200px';
+                    kingKongElon.style.height = '150px';
+                    kingKongElon.classList.add('beating');
+                    setTimeout(() => {
+                        kingKongElon.classList.remove('beating');
+                        kingKongElon.style.width = '150px';
+                        kingKongElon.style.height = '112px';
+                    }, 3000);
+                }
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            startButton.style.display = 'block';
+            kingKongElon.classList.remove('beating');
+            kingKongElon.style.width = '150px';
+            kingKongElon.style.height = '112px';
+            alert(`Game Over! Your score: ${score} billion`);
+        }
+
+        holes.forEach(hole => {
+            hole.addEventListener('touchstart', whack, { passive: false });
+            hole.addEventListener('click', whack);
+        });
+        startButton.addEventListener('touchstart', startGame, { passive: false });
+        startButton.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
